@@ -19,7 +19,7 @@ package fr.acinq.keysend
 import akka.actor.Actor.Receive
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.{DiagnosticLoggingAdapter, LoggingAdapter}
-import fr.acinq.bitcoin.ByteVector32
+import fr.acinq.bitcoin.{ByteVector32, Crypto}
 import fr.acinq.eclair.channel.{CMD_FAIL_HTLC, CMD_FULFILL_HTLC, Channel}
 import fr.acinq.eclair.db.PaymentsDb
 import fr.acinq.eclair.{CltvExpiry, Logs, MilliSatoshi, NodeParams}
@@ -37,15 +37,16 @@ class KeySendPaymentHandler(nodeParams: NodeParams, cmdBuffer: ActorRef) extends
   override def handle(implicit ctx: ActorContext, log: DiagnosticLoggingAdapter): Receive = {
     case packet@FinalPacket(htlc, payload:FinalTlvPayload) if isKeysendPayload(payload) =>
       Logs.withMdc(log)(Logs.mdc(paymentHash_opt = Some(htlc.paymentHash))) {
-        validatePayment(packet) match {
+        val Some(keysendRecord) = payload.records.unknown.find(_.tag == Keysend.KEYSEND_RECORD_TYPE)
+        val preimage = ByteVector32(keysendRecord.value)
+        validatePayment(packet, preimage) match {
           case false =>
             cmdBuffer ! CMD_FAIL_HTLC(htlc.id, Right(IncorrectOrUnknownPaymentDetails(payload.totalAmount, nodeParams.currentBlockHeight)), commit = true)
           case true =>
             log.info(s"received keysend payment with paymentHash=${htlc.paymentHash.toHex}")
-            val Some(keysendRecord) = payload.records.unknown.find(_.tag == Keysend.KEYSEND_RECORD_TYPE)
-            val preimage = ByteVector32(keysendRecord.value)
             cmdBuffer ! CommandBuffer.CommandSend(htlc.channelId, CMD_FULFILL_HTLC(htlc.id, preimage, commit = true))
-            db.addIncomingPayment(createFakeInvoice(packet), preimage, paymentType = "KeySend")
+            val fakeRequest = PaymentRequest(nodeParams.chainHash, Some(htlc.amountMsat), htlc.paymentHash, nodeParams.privateKey, "Fake invoice for keysend incoming payment")
+            db.addIncomingPayment(fakeRequest, preimage, paymentType = "KeySend")
             db.receiveIncomingPayment(htlc.paymentHash, htlc.amountMsat)
         }
       }
@@ -55,20 +56,10 @@ class KeySendPaymentHandler(nodeParams: NodeParams, cmdBuffer: ActorRef) extends
     payload.records.unknown.exists(_.tag == Keysend.KEYSEND_RECORD_TYPE)
   }
 
-  def createFakeInvoice(packet: FinalPacket): PaymentRequest = {
-    PaymentRequest(
-      nodeParams.chainHash,
-      Some(packet.payload.totalAmount),
-      packet.add.paymentHash,
-      nodeParams.privateKey,
-      "Fake invoice for keysend payment",
-      expirySeconds = Some(5000) // the invoice is already paid when inserted in the db
-    )
-  }
-
-  def validatePayment(payload: FinalPacket)(implicit log: LoggingAdapter): Boolean = {
+  def validatePayment(payload: FinalPacket, preimage: ByteVector32)(implicit log: LoggingAdapter): Boolean = {
     validatePaymentCltv(payload, Channel.MIN_CLTV_EXPIRY_DELTA.toCltvExpiry(nodeParams.currentBlockHeight)) &&
-    validatePaymentAmount(payload, payload.payload.totalAmount)
+    validatePaymentAmount(payload, payload.payload.totalAmount) &&
+    Crypto.sha256(preimage) === payload.add.paymentHash // check if the preimage we've received actually redeems the htlc
   }
 
   private def validatePaymentAmount(payment: IncomingPacket.FinalPacket, expectedAmount: MilliSatoshi)(implicit log: LoggingAdapter): Boolean = {
