@@ -39,7 +39,7 @@ import grizzled.slf4j.Logging
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
-class PluginEntryPoint extends Plugin with Logging {
+class KeysendPluginEntryPoint extends Plugin with Logging {
 
   implicit val timeout = Timeout(30 seconds)
   var conf: Config = null
@@ -96,7 +96,7 @@ class PluginEntryPoint extends Plugin with Logging {
       maxFeeBase = feeThreshold_opt.map(_.toMilliSatoshi).getOrElse(defaultRouteParams.maxFeeBase)
     )
 
-    val finalCltv = finalCltvExpiry_opt.map(CltvExpiryDelta).getOrElse(Channel.MIN_CLTV_EXPIRY_DELTA)
+    val finalCltv = finalCltvExpiry_opt.map(CltvExpiryDelta).getOrElse(Channel.MIN_CLTV_EXPIRY_DELTA + 1)
     val paymentPreimage = eclair.randomBytes32
     val paymentHash = Crypto.sha256(paymentPreimage)
     val keysendTlvRecord = GenericTlv(Keysend.KEYSEND_RECORD_TYPE, paymentPreimage)
