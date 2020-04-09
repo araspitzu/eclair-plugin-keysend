@@ -156,13 +156,13 @@
         <dependency>
             <groupId>fr.acinq.eclair</groupId>
             <artifactId>eclair-core_${scala.version.short}</artifactId>
-            <version>0.3.4-SNAPSHOT</version>
+            <version>0.3.5-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>fr.acinq.eclair</groupId>
             <artifactId>eclair-node_${scala.version.short}</artifactId>
-            <version>0.3.4-SNAPSHOT</version>
+            <version>0.3.5-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

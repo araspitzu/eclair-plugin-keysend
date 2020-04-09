@@ -20,7 +20,7 @@ import java.util.UUID
 import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.directives.Credentials
-import akka.http.scaladsl.server.{Route}
+import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.typesafe.config.Config
@@ -32,7 +32,7 @@ import fr.acinq.eclair.api.FormParamExtractors._
 import fr.acinq.eclair.api.ExtraDirectives
 import fr.acinq.eclair.channel.Channel
 import fr.acinq.eclair.payment.send.PaymentInitiator.SendPaymentRequest
-import fr.acinq.eclair.router.Router
+import fr.acinq.eclair.router.RouteCalculation
 import fr.acinq.eclair.wire.GenericTlv
 import grizzled.slf4j.Logging
 
@@ -90,7 +90,7 @@ class KeysendPluginEntryPoint extends Plugin with Logging {
 
   def doKeysend(amount: MilliSatoshi, nodeId: PublicKey, finalCltvExpiry_opt: Option[Int], maxAttempts_opt: Option[Int], feeThreshold_opt: Option[Satoshi], maxFeePct_opt: Option[Double], externalId_opt: Option[String])(implicit ec: ExecutionContext, timeout: Timeout): Future[String] = {
     val maxAttempts = maxAttempts_opt.getOrElse(kit.nodeParams.maxPaymentAttempts)
-    val defaultRouteParams = Router.getDefaultRouteParams(kit.nodeParams.routerConf)
+    val defaultRouteParams = RouteCalculation.getDefaultRouteParams(kit.nodeParams.routerConf)
     val routeParams = defaultRouteParams.copy(
       maxFeePct = maxFeePct_opt.getOrElse(defaultRouteParams.maxFeePct),
       maxFeeBase = feeThreshold_opt.map(_.toMilliSatoshi).getOrElse(defaultRouteParams.maxFeeBase)
