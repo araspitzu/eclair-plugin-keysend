@@ -14,13 +14,14 @@ passed as argument to eclair when it's launched, see the [instructions](https://
 
 ### Usage
 
-Once the plugin is loaded your eclair-node will be able to receive `keysend` payment immediately, in order to send
-we expose a new http interface with an additional endpoint:
+The plugin supprts both sending and receiving `keysend` payments, in order to send we expose a new http interface 
+with an additional endpoint:
 
 |              | METHOD | Parameter (form_data) | Action                                                      |
 |--------------|--------|-----------------------|-------------------------------------------------------------|
-| /keysend | POST   | amountMsat, nodeId          | Send a `keysend` payment to the recipient      |
+| /keysend | POST   | amountMsat, nodeId, finalCltvExpiry(optional)      | Send a `keysend` payment to the recipient      |
 
 Note that it's currently impossible for eclair plugins to add new HTTP-RPC endpoints, so this plugin listens
-on a different socket than the standard eclair API, the port will be `eclair.api.port + 1`. The same authentication
-credentials of the regular eclair API is necessary to use the plugin APIs.
+on a different port than the standard eclair API. You can configure the port by setting the
+configuration key `keysend.api.port` but if none is set the plugin will default to the eclair API port + 1.
+The same authentication credentials of the regular eclair API is necessary to use the plugin APIs.
