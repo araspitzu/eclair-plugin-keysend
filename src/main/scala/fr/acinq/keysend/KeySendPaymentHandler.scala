@@ -43,7 +43,7 @@ class KeySendPaymentHandler(nodeParams: NodeParams, cmdBuffer: ActorRef) extends
           case false =>
             cmdBuffer ! CMD_FAIL_HTLC(htlc.id, Right(IncorrectOrUnknownPaymentDetails(payload.totalAmount, nodeParams.currentBlockHeight)), commit = true)
           case true =>
-            log.info(s"received keysend payment with paymentHash=${htlc.paymentHash.toHex}")
+            log.info(s"received keysend payment")
             cmdBuffer ! CommandBuffer.CommandSend(htlc.channelId, CMD_FULFILL_HTLC(htlc.id, preimage, commit = true))
             val fakeRequest = PaymentRequest(nodeParams.chainHash, Some(htlc.amountMsat), htlc.paymentHash, nodeParams.privateKey, "Fake invoice for keysend incoming payment")
             db.addIncomingPayment(fakeRequest, preimage, paymentType = "KeySend")
